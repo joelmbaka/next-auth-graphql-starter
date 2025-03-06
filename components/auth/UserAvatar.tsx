@@ -1,3 +1,4 @@
+// components/auth/UserAvatar.tsx
 import { useSession } from 'next-auth/react';
 
 export default function UserAvatar() {

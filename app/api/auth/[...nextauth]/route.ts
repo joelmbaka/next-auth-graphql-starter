@@ -1,3 +1,3 @@
-import { handlers } from "@/auth" // Referring to the auth.ts we just created
+import { authOptions } from "@/auth";
 
-export const { GET, POST } = handlers
+export const { GET, POST } = authOptions.handlers;

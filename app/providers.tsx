@@ -2,7 +2,7 @@
 
 import { SessionProvider } from 'next-auth/react';
 import { ApolloProvider } from '@apollo/client';
-import client from '@/lib/apolloClient';
+import { apolloClient } from '@/lib/apolloClient';
 import { Session } from 'next-auth';
 import { useEffect, useState } from 'react';
 import { getSession } from 'next-auth/react';
@@ -20,7 +20,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
   return (
     <SessionProvider session={session}>
-      <ApolloProvider client={client}>
+      <ApolloProvider client={apolloClient}>
         {children}
       </ApolloProvider>
     </SessionProvider>

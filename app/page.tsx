@@ -1,15 +1,16 @@
-"use client";
-
-import { SignInButton } from '@/components/auth/SignInButton';
-import { SignOut } from '@/components/auth/SignOut';
-import { useSession } from 'next-auth/react';
+'use client';
+import SignInModal from "@/components/SigninModal";
+import { Button } from "@/components/ui/button";
+import { useState } from "react";
 
 export default function Home() {
-  const { data: session } = useSession();
-
-  return (
-    <div>
-      {session ? <SignOut /> : <SignInButton />}
-    </div>
-  );
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    return (
+        <div className="flex flex-col h-screen p-4 rounded-lg items-center justify-center">
+            <Button onClick={() => setIsModalOpen(true)}>
+              Get Started
+            </Button>
+            <SignInModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
+        </div>
+    );
 }
