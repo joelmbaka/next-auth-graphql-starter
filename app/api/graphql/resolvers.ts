@@ -48,6 +48,12 @@ const resolvers = {
       },
       { driver }: { driver: any }
     ) => {
+      // Add word count validation
+      const wordCount = content.trim().split(/\s+/).length;
+      if (wordCount < 150) {
+        throw new Error('Article content must be at least 150 words');
+      }
+
       const session = driver.session();
       try {
         const result = await session.run(

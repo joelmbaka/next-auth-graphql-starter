@@ -1,11 +1,14 @@
 "use client";
 
 import Link from 'next/link';
-import { useSession, signIn, signOut } from 'next-auth/react';
+import { useSession, signOut } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
+import { useState } from 'react';
+import SigninModal from '@/components/SigninModal';
 
 export default function Navbar() {
-  const { data: session } = useSession();
+  const [isSigninModalOpen, setIsSigninModalOpen] = useState(false);
+  const { data: session, status } = useSession();
 
   return (
     <nav className="flex justify-between items-center p-4">
@@ -18,12 +21,21 @@ export default function Navbar() {
         <li><Link href="/profile">Profile</Link></li>
       </ul>
       <div className="auth">
-        {session ? (
+        {status === 'loading' ? (
+          <Button disabled>Loading...</Button>
+        ) : session ? (
           <Button onClick={() => signOut()}>Logout</Button>
         ) : (
-          <Button onClick={() => signIn()}>Login</Button>
+          <>
+            <Button onClick={() => setIsSigninModalOpen(true)}>Login</Button>
+            <SigninModal 
+              isOpen={isSigninModalOpen} 
+              onClose={() => setIsSigninModalOpen(false)} 
+            />
+          </>
         )}
       </div>
     </nav>
   );
-} 
+}
+

@@ -44,4 +44,4 @@ declare module "next-auth/jwt" {
     // You can add other fields like role, permissions, etc.
     permissions?: string[]; // Add permissions field
   }
-} 
+}

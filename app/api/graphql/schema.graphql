@@ -6,11 +6,16 @@ type Article {
   title: String!
   description: String
   content: String!
-  author: String!
   url: String!
   featuredImage: String!
+  imageUrls: [String!]!
   createdAt: String!
   updatedAt: String!
+  source: String!
+  sourceAvatar: String!
+  author: String!
+  category: String!
+  location: String!
 }
 
 type Query {
@@ -21,9 +26,14 @@ type Query {
 type Mutation {
   createArticle(
     title: String!
-    description: String!
+    excerpt: String
     content: String!
     author: String!
     featuredImage: String!
+    imageUrls: [String!]!
+    source: String!
+    sourceAvatar: String!
+    category: String!
+    location: String!
   ): Article!
 } 

@@ -7,7 +7,7 @@ import { NextAuthOptions } from "next-auth";
 
 const neo4jSession = driver.session();
 
-export const authOptions: NextAuthOptions = NextAuth({
+export const authOptions: NextAuthOptions = {
   providers: [
     GitHubProvider({
       clientId: process.env.GITHUB_ID!,
@@ -22,10 +22,20 @@ export const authOptions: NextAuthOptions = NextAuth({
   session: {
     strategy: 'jwt',
   },
+ 
   callbacks: {
+    // Add JWT callback to ensure token contains user ID
+    async jwt({ token, user }) {
+      if (user) {
+        token.id = user.id;
+      }
+      return token;
+    },
     async session({ session, token }: { session: any; token: any }) {
-      session.user.id = token.id as string;
+      if (token && session.user) {
+        session.user.id = token.id as string;
+      }
       return session;
     },
   },
-});
+};
