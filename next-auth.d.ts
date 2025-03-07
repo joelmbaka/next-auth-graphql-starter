@@ -7,24 +7,22 @@ declare module "next-auth" {
       // Add your custom properties for the session user here.
       id: string;
       role?: string; // Add role field
-      // You can also add additional fields, e.g., role: string;
     } & DefaultSession["user"];
   }
 
   interface User extends DefaultUser {
     // Add custom properties for the user here.
     id: string;
-    locale?: string; // Add locale field
-    avatar?: string; // Add avatar field
-    role?: string; // Add role field
-    // For example, role?: string;
+    locale?: string; 
+    avatar?: string; 
+    role?: string; 
   }
 
   // Extend the Account interface if you need to add more properties.
   interface Account {
     // provider and type are already defined by default.
     accessToken?: string; // Add accessToken field
-    // Add custom properties if necessary, e.g.:
+    properties if necessary, e.g.:
     // accessToken?: string;
   }
 
