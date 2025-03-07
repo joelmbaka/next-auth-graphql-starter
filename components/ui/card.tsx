@@ -65,8 +65,4 @@ function CardFooter({ className, ...props }: React.ComponentProps<"div">) {
   )
 }
 
-
-//add href
-//add lucide icon
-
 export { Card, CardHeader, CardFooter, CardTitle, CardDescription, CardContent }

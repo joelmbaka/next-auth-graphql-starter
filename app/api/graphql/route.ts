@@ -1,35 +1,33 @@
 import { ApolloServer } from '@apollo/server';
 import { startServerAndCreateNextHandler } from '@as-integrations/next';
-import { Neo4jGraphQL } from '@neo4j/graphql';
-import neo4j from 'neo4j-driver';
-import { NextApiRequest, NextApiResponse } from 'next';
+import { readFileSync } from 'fs';
+import { join } from 'path';
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '@/auth';
+import driver from '@/lib/driver';
+import { NextRequest, NextResponse } from 'next/server';
+import { ApolloServerOptions, BaseContext } from '@apollo/server';
+import resolvers from './resolvers';
 
-// Define GraphQL type definitions
-const typeDefs = `
-  type Query {
-    hello: String
-  }
-`;
+const typeDefs = readFileSync(join(process.cwd(), 'app/api/graphql/schema.graphql'), 'utf8');
 
-// Create Neo4j driver
-const driver = neo4j.driver(
-  process.env.NEO4J_URI || '',
-  neo4j.auth.basic(process.env.NEO4J_USERNAME || '', process.env.NEO4J_PASSWORD || '')
-);
+// Create the Apollo Server instance
+const apolloServer = new ApolloServer({
+  typeDefs,
+  resolvers,
+  context: async ({ req, res }: { req: NextRequest; res: NextResponse }) => {
+    const session = await getServerSession(authOptions);
+    return { driver, session, user: session?.user };
+  },
+} as ApolloServerOptions<BaseContext>);
 
-// Create Neo4jGraphQL instance
-const neoSchema = new Neo4jGraphQL({ typeDefs, driver });
+export const GET = async (request: Request) => {
+  return startServerAndCreateNextHandler(apolloServer)(request);
+};
 
-// Generate executable schema
-const schema = await neoSchema.getSchema();
+export const POST = async (request: Request) => {
+  return startServerAndCreateNextHandler(apolloServer)(request);
+}; 
+  
 
-// Create Apollo Server
-const server = new ApolloServer({
-  schema,
-  introspection: true, // Enable GraphQL Playground in development
-});
 
-// Export API route handler
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  return startServerAndCreateNextHandler(server)(req, res);
-} 
