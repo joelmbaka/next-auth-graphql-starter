@@ -22,8 +22,8 @@ declare module "next-auth" {
   interface Account {
     // provider and type are already defined by default.
     accessToken?: string; // Add accessToken field
-    properties if necessary, e.g.:
-    // accessToken?: string;
+    refreshToken?: string; // Add refreshToken field
+    expiresAt?: number; // Add token expiration timestamp
   }
 
   // Extend the Profile interface to include additional OAuth profile fields.
@@ -33,6 +33,8 @@ declare module "next-auth" {
     locale?: string; // Example field
     avatar?: string; // Example field for user avatar
     bio?: string; // Add bio field
+    //C.V : string
+        //title:, esperience, education etc fields
   }
 }
 

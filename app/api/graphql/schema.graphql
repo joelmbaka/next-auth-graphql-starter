@@ -1,6 +1,25 @@
 # A simple GraphQL schema definition for news aggregator
 scalar Date
 
+#type journal entry
+#new entry, edit entry, delete entry
+#trash bin - caching
+#smart actions with AI
+
+#type newspaper
+##embedd paper 
+##read paper
+##take action e.g apply to a jo posting
+
+#type business profile
+
+#events
+#goal
+#income
+#expense
+#family
+#utility
+
 type Article {
   id: ID!
   title: String!

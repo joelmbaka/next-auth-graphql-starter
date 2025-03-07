@@ -6,8 +6,8 @@ import Navbar from "@/components/navigation/Navbar";
 export default function ConditionalNavbar() {
   const pathname = usePathname();
 
-  // If the current route starts with '/dashboard', do not render the public Navbar.
-  if (pathname.startsWith("/dashboard")) {
+  // Don't render navbar on dashboard routes or the RSS page (which is embedded in an iframe)
+  if (pathname.startsWith("/dashboard") || pathname.startsWith("/rss")) {
     return null;
   }
 

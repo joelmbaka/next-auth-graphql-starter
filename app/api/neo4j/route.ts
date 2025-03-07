@@ -1,26 +1,34 @@
-import { NextApiRequest, NextApiResponse } from 'next';
-import driver from '@/lib/tools'; // Ensure this path is correct
+import { NextResponse } from 'next/server';
+import driver from '@/lib/driver'; // Fixed import path
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/auth';
+import { Record } from 'neo4j-driver'; // Import Record type
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  console.log('Request method:', req.method); // Log the request method
-
-  if (req.method !== 'GET') {
-    return res.status(405).json({ error: 'Method Not Allowed' });
-  }
-
-  const session = driver.session();
+export async function GET() {
+  // Log the session status
+  const session = await getServerSession(authOptions);
+  console.log('Session status:', session ? 'Authenticated' : 'Not authenticated');
+  console.log('Session data:', JSON.stringify(session, null, 2));
+  
+  // If you want to require authentication, uncomment the following:
+  // if (!session) {
+  //   return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  // }
+  
+  const dbSession = driver.session();
   try {
-    const result = await session.run('MATCH (u:User) RETURN u.email AS email, u.name AS name, u.avatar AS avatar LIMIT 10');
-    const users = result.records.map(record => ({
+    const result = await dbSession.run('MATCH (u:User) RETURN u.email AS email, u.name AS name, u.avatar AS avatar LIMIT 10');
+    const users = result.records.map((record: Record) => ({
       email: record.get('email'),
       name: record.get('name'),
       avatar: record.get('avatar'),
     }));
-    res.status(200).json(users);
+    
+    return NextResponse.json(users);
   } catch (error) {
     console.error('Error fetching users:', error);
-    res.status(500).json({ error: 'Internal Server Error' });
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   } finally {
-    await session.close();
+    await dbSession.close();
   }
 }

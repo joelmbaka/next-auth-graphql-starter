@@ -1,5 +1,5 @@
 {
-  "name": "Apollo launchpad",
+  "name": "Concave Masters || casters || Longetivity || Perpetual || Mindstream Media Oceanview Technologies, WebView Plaza, Hootsuite Publishers, Finegrind TMC , camcast media, webdevops media  ",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -29,6 +29,7 @@
     "react-dom": "^19.0.0",
     "react-icons": "^5.5.0",
     "react-leaflet": "^5.0.0",
+    "rss-parser": "^3.13.0",
     "tailwind-merge": "^3.0.2",
     "tailwindcss-animate": "^1.0.7"
   },
