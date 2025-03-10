@@ -1,6 +1,6 @@
 // /api/agent/route.ts
 import { NextResponse } from 'next/server';
-import { ChatNvidiaLLM } from '@/lib/tools/ChatNVIDIA';
+import { ChatNvidiaLLM } from '@/lib/tools/nvidia/ChatNVIDIA';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/auth'; // Adjust the path as needed
 
