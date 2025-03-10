@@ -8,6 +8,8 @@ declare module "next-auth" {
       id: string;
       role?: string; // Add role field
     } & DefaultSession["user"];
+    accessToken?: string;
+    refreshToken?: string;
   }
 
   interface User extends DefaultUser {

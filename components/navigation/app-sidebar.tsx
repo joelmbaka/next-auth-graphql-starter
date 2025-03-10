@@ -10,27 +10,82 @@ import {
     SidebarMenu,
     SidebarMenuItem,
     SidebarMenuButton,
+    SidebarMenuSub,
+    SidebarMenuSubItem,
+    SidebarMenuSubButton,
   } from "@/components/ui/sidebar"
-  import { LucideGitGraph, Settings, NotebookPen, DollarSign, LucideUsers, Flashlight, Shirt, Package, ArrowUpRight, LucideUserRound, Newspaper } from "lucide-react"
+  import { ArrowUpRight, Newspaper, ChevronDown, Mail, PenSquare, Calendar, Twitter, Facebook, Linkedin, Users, FileText, Share2, Share } from "lucide-react"
   import { SiteSwitcher } from "@/components/navigation/SiteSwitcher"
   import { signOut, useSession } from "next-auth/react"
   import { useState } from "react"
-
+import { Video } from "lucide-react"
 
   const menuItems = [
-    {
-      title: "News Feed",
-      url: "/dashboard/feed",
-      icon: Newspaper,
-    },
-    
+   {
+     title: "Productivity",
+     icon: PenSquare,
+     subItems: [
+       {title: "Google Calendar", url: "/dashboard/calendar"},
+       {title: "Gmail", url: "/dashboard/gmail"},
+       {title: "Read Emails", url: "/dashboard/gmail/read"},
+       {title: "Craft an Email", url: "/dashboard/gmail/write"}
+     ]
+   },
+   {
+     title: "News Feed", 
+     icon: Newspaper,
+     url: "/dashboard/news",
+     subItems: [
+       {title: "Fetch Latest News", url: "/dashboard/news/fetch"},
+       {title: "Craft an Article", url: "/dashboard/news/craft"}
+     ]
+   },
+   {
+     title: "Social",
+     icon: Share2,
+     subItems: [
+       {
+         title: "YouTube",
+         icon: Video,
+         subItems: [
+           {title: "My Subscriptions", url: "/dashboard/youtube/subscriptions"},
+           {title: "Search Channels", url: "/dashboard/youtube/search-channels"},
+           {title: "Search Videos", url: "/dashboard/youtube/search-videos"}
+         ]
+       },
+       {title: "X.com", url: "/dashboard/x", icon: Twitter},
+       {title: "Facebook.com", url: "/dashboard/facebook", icon: Facebook},
+       {title: "LinkedIn.com", url: "/dashboard/linkedin", icon: Linkedin}
+     ]
+   },
+   {
+     title: "Content Studio",
+     icon: FileText,
+     subItems: [
+       {title: "X content", url: "/dashboard/content/x"},
+       {title: "Facebook content", url: "/dashboard/content/facebook"},
+       {title: "LinkedIn content", url: "/dashboard/content/linkedin"}
+     ]
+   },
   ]
   
   export function AppSidebar() {
     const { data: session } = useSession();
     const [isDropdownOpen, setDropdownOpen] = useState(false);
+    const [openSubMenus, setOpenSubMenus] = useState<Set<string>>(new Set());
 
     const toggleDropdown = () => setDropdownOpen(!isDropdownOpen);
+    const toggleSubMenu = (title: string) => {
+      setOpenSubMenus((prev) => {
+        const newSet = new Set(prev);
+        if (newSet.has(title)) {
+          newSet.delete(title);
+        } else {
+          newSet.add(title);
+        }
+        return newSet;
+      });
+    };
 
     return (
       <Sidebar
@@ -51,12 +106,42 @@ import {
             <SidebarMenu>
               {menuItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <a href={item.url} className="flex items-center space-x-2 p-2 text-sm">
-                      <item.icon className="h-4 w-4" />
-                      <span>{item.title}</span>
-                    </a>
-                  </SidebarMenuButton>
+                  {item.subItems ? (
+                    <>
+                      <SidebarMenuButton 
+                        onClick={() => toggleSubMenu(item.title)}
+                        className="flex items-center justify-between p-2 text-sm w-full"
+                      >
+                        <div className="flex items-center space-x-2">
+                          <item.icon className="h-4 w-4" />
+                          <span>{item.title}</span>
+                        </div>
+                        <ChevronDown 
+                          className={`h-4 w-4 transition-transform ${
+                            openSubMenus.has(item.title) ? 'rotate-0' : '-rotate-90'
+                          }`}
+                        />
+                      </SidebarMenuButton>
+                      {openSubMenus.has(item.title) && (
+                        <SidebarMenuSub>
+                          {item.subItems.map((subItem) => (
+                            <SidebarMenuSubItem key={subItem.title}>
+                              <SidebarMenuSubButton href={subItem.url}>
+                                {subItem.title}
+                              </SidebarMenuSubButton>
+                            </SidebarMenuSubItem>
+                          ))}
+                        </SidebarMenuSub>
+                      )}
+                    </>
+                  ) : (
+                    <SidebarMenuButton asChild>
+                      <a href={item.url} className="flex items-center space-x-2 p-2 text-sm">
+                        <item.icon className="h-4 w-4" />
+                        <span>{item.title}</span>
+                      </a>
+                    </SidebarMenuButton>
+                  )}
                 </SidebarMenuItem>
               ))}
             </SidebarMenu>

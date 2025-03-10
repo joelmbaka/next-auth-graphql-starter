@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import driver from '@/lib/driver'; // Fixed import path
+import driver from '@/lib/clients/driver'; // Fixed import path
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/auth';
 import { Record } from 'neo4j-driver'; // Import Record type

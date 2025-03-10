@@ -1,8 +1,8 @@
 import NextAuth from "next-auth";
-import driver from "@/lib/driver";
+import driver from "@/lib/clients/driver";
 import { Neo4jAdapter } from "@auth/neo4j-adapter";
 import GitHubProvider from "next-auth/providers/github";
-import GoogleProvider from "next-auth/providers/google"; 
+import GoogleProvider from "next-auth/providers/google";
 import { NextAuthOptions } from "next-auth";
 
 const neo4jSession = driver.session();
@@ -16,26 +16,50 @@ export const authOptions: NextAuthOptions = {
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+      authorization: {
+        params: {
+          prompt: "consent",
+          access_type: "offline",
+          response_type: "code",
+          scope: [
+            "openid",
+            "profile",
+            "email",
+            "https://www.googleapis.com/auth/calendar",
+            "https://www.googleapis.com/auth/youtube",
+            "https://www.googleapis.com/auth/gmail.readonly"
+          ].join(" "),
+        },
+      },
     }),
   ],
   adapter: Neo4jAdapter(neo4jSession),
   session: {
-    strategy: 'jwt',
+    strategy: "jwt",
   },
- 
   callbacks: {
-    // Add JWT callback to ensure token contains user ID
-    async jwt({ token, user }) {
+    // Capture and persist additional token fields on sign-in
+    async jwt({ token, user, account }) {
+      // When signing in, `account` is available and contains the access_token and other data.
+      if (account) {
+        token.accessToken = account.access_token || '';
+        token.refreshToken = account.refresh_token || '';
+        token.expiresAt = account.expires_at;
+      }
       if (user) {
         token.id = user.id;
       }
       return token;
     },
-    async session({ session, token }: { session: any; token: any }) {
-      if (token && session.user) {
+    // Make the token accessible in the session so that it can be used on the client
+    async session({ session, token }) {
+      if (session.user) {
         session.user.id = token.id as string;
       }
+      session.accessToken = token.accessToken as string;
+      session.refreshToken = token.refreshToken as string;
       return session;
     },
   },
 };
+ 

@@ -5,20 +5,22 @@ import { useSession, signOut } from 'next-auth/react';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
 import SigninModal from '@/components/SigninModal';
+import { Star } from 'lucide-react';
 
 export default function Navbar() {
   const [isSigninModalOpen, setIsSigninModalOpen] = useState(false);
   const { data: session, status } = useSession();
 
   return (
-    <nav className="flex justify-between items-center p-4">
+    <nav className="flex justify-between items-center p-8">
       <div className="logo">
-        <Link href="/">MyApp</Link>
+        <Link href="/"><Star /></Link>
+
+      
       </div>
       <ul className="flex space-x-4">
-        <li><Link href="/">Home</Link></li>
-        <li><Link href="/dashboard">Dashboard</Link></li>
-        <li><Link href="/profile">Profile</Link></li>
+        <li><Link href="/">Lets do something amazing together</Link></li>
+      
       </ul>
       <div className="auth">
         {status === 'loading' ? (

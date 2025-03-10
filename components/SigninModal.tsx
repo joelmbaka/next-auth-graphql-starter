@@ -25,14 +25,12 @@ const SigninModal: React.FC<SigninModalProps> = ({ isOpen, onClose }) => {
 
     const handleGoogleSignIn = async () => {
         setGoogleLoading(true);
-        await signIn('google', { callbackUrl: '/dashboard' });
-        router.push('/dashboard');
+        await signIn('google');
     };
 
     const handleGithubSignIn = async () => {
         setGithubLoading(true);
-        await signIn('github', { callbackUrl: '/dashboard' });
-        router.push('/dashboard');
+        await signIn('github');
     };
 
     return (

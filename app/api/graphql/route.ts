@@ -4,7 +4,7 @@ import { readFileSync } from 'fs';
 import { join } from 'path';
 import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/auth';
-import driver from '@/lib/driver';
+import driver from '@/lib/clients/driver';
 import { NextRequest, NextResponse } from 'next/server';
 import { ApolloServerOptions, BaseContext } from '@apollo/server';
 import resolvers from './resolvers';
@@ -15,7 +15,7 @@ const typeDefs = readFileSync(join(process.cwd(), 'app/api/graphql/schema.graphq
 const apolloServer = new ApolloServer({
   typeDefs,
   resolvers,
-  context: async ({ req, res }: { req: NextRequest; res: NextResponse }) => {
+  context: async (_args: { req: NextRequest; res: NextResponse }) => {
     const session = await getServerSession(authOptions);
     return { driver, session, user: session?.user };
   },
