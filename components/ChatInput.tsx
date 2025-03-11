@@ -12,37 +12,33 @@ interface ChatInputProps {
 }
 
 const ChatInput: React.FC<ChatInputProps> = ({ onSend, loading }) => {
-    const [question, setQuestion] = useState('');
+    const [input, setInput] = useState('');
 
-    const handleSend = () => {
-        if (question.trim()) {
-            onSend(question);
-            setQuestion('');
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (input.trim()) {
+            onSend(input);
+            setInput('');
         }
     };
 
     return (
-        <div className="flex mb-4 w-full">
+        <form onSubmit={handleSubmit} className="flex gap-2">
             <Input
-                type="text"
-                value={question}
-                onChange={(e) => setQuestion(e.target.value)}
-                placeholder="Ask a question..."
-                className="flex-grow border rounded p-2 mr-2 bg-background text-foreground"
-                onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-            />
-            <Button 
-                onClick={handleSend} 
-                className="flex items-center bg-background text-foreground hover:bg-foreground hover:text-background"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder="Type your message..."
+                aria-label="Chat input"
                 disabled={loading}
+            />
+            <Button
+                type="submit"
+                disabled={loading || !input.trim()}
+                aria-label="Send message"
             >
-                {loading ? 'Sending...' : (
-                    <>
-                        Send <Send className="ml-1" />
-                    </>
-                )}
+                <Send className="h-4 w-4" />
             </Button>
-        </div>
+        </form>
     );
 };
 

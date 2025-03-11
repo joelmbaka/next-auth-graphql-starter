@@ -58,36 +58,43 @@ export class ChatNvidiaLLM extends LLM {
   ): Promise<string> {
     const messages = this._getMessages(prompt);
     if (runManager) {
-      // Updated callback: now passing the llm type and the prompt messages (as string or array)
       await runManager.handleLLMNewToken(this._llmType(), {
-        prompt: 0, // index of the prompt
-        completion: 0 // index of the completion
+        prompt: 0,
+        completion: 0,
       });
     }
     let finalResponse: string = "";
-    try {
-      const completion = await this.openai.chat.completions.create({
-        model: this.model,
-        messages: messages.map((m) => ({ role: 'user', content: m })), // Convert back to expected API shape
-        temperature: this.temperature,
-        top_p: this.top_p,
-        max_tokens: this.max_tokens,
-        stream: false,
-      });
-      finalResponse = completion.choices[0].message.content;
-      if (runManager) {
-        // Now passing the final response directly (or as an array)
-        await runManager.handleLLMEnd({
-          generations: [[{ text: finalResponse }]]
+    let retries = 3;
+    while (retries > 0) {
+      try {
+        const completion = await this.openai.chat.completions.create({
+          model: this.model,
+          messages: messages.map((m) => ({ role: 'user', content: m })),
+          temperature: this.temperature,
+          top_p: this.top_p,
+          max_tokens: this.max_tokens,
+          stream: false,
         });
+        finalResponse = completion.choices[0].message.content;
+        if (runManager) {
+          await runManager.handleLLMEnd({
+            generations: [[{ text: finalResponse }]],
+          });
+        }
+        return finalResponse;
+      } catch (error: any) {
+        if (error.status === 429) { // Rate limit error
+          retries--;
+          await new Promise((resolve) => setTimeout(resolve, 1000 * (4 - retries))); // Exponential backoff
+        } else {
+          if (runManager) {
+            await runManager.handleLLMError(error, messages.join("\n"));
+          }
+          throw error;
+        }
       }
-    } catch (error: any) {
-      if (runManager) {
-        await runManager.handleLLMError(error, messages.join("\n"));
-      }
-      throw error;
     }
-    return finalResponse as string;
+    throw new Error('Rate limit exceeded after retries');
   }
 
   /**

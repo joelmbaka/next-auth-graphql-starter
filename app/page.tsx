@@ -12,13 +12,13 @@ export default function HomePage() {
     setLoading(true);
     setResponse(null);
     try {
-      const res = await fetch('/api/agent', {
+      const res = await fetch('/api/test', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: question }),
+        body: JSON.stringify({ input: `${question},` }),
       });
       const data = await res.json();
-      setResponse(data.response || data.error);
+      setResponse(data.result || data.error);
     } catch (error: any) {
       setResponse({ error: error.message });
     }

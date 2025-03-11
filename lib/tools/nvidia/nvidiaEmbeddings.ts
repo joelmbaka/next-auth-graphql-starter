@@ -57,5 +57,10 @@ export interface NvidiaEmbeddingsClientConfig {
       const data: EmbeddingResponse = await response.json();
       return data.data[0].embedding;
     }
+
+    async embedDocuments(documents: string[]): Promise<number[][]> {
+      const embeddings = await Promise.all(documents.map(doc => this.embedQuery(doc)));
+      return embeddings;
+    }
   }
   

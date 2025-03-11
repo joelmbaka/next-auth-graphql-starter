@@ -37,53 +37,27 @@ const SigninModal: React.FC<SigninModalProps> = ({ isOpen, onClose }) => {
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center">
             <dialog open className="border border-gray-300 rounded-lg shadow-md p-4 w-[90%] max-w-[400px] h-[300px] bg-white mx-auto flex flex-col justify-center items-center">
                 <h2 className="text-center mb-4">Welcome to Bramix Builders!</h2>
-                <form className="w-full flex flex-col items-center">
-                    <div className="text-center mb-4">
-                        <h3>please sign in to continue:</h3>
-                    </div>
-                    <div className="w-full max-w-[250px]">
-                        {/* Button to sign in with Google */}
-                        <Button 
-                            type="button" 
-                            className="flex items-center justify-center gap-2 border border-gray-300 mb-2 w-full" 
-                            onClick={handleGoogleSignIn}
-                            disabled={googleLoading || githubLoading}
-                        >
-                            {googleLoading ? (
-                                <div className="flex items-center gap-2">
-                                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-gray-300 border-t-gray-600" />
-                                    Signing you in...
-                                </div>
-                            ) : (
-                                <>
-                                    <FaGoogle className="w-4 h-4" />
-                                    Sign In with Google
-                                </>
-                            )}
-                        </Button>
-                        {/* Button to sign in with GitHub */}
-                        <Button 
-                            type="button" 
-                            className="flex items-center justify-center gap-2 border border-gray-300 w-full" 
-                            onClick={handleGithubSignIn}
-                            disabled={googleLoading || githubLoading}
-                        >
-                            {githubLoading ? (
-                                <div className="flex items-center gap-2">
-                                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-gray-300 border-t-gray-600" />
-                                    Signing you in...
-                                </div>
-                            ) : (
-                                <>
-                                    <Github className="w-4 h-4" />
-                                    Sign In with GitHub
-                                </>
-                            )}
-                        </Button>
-                    </div>
-                </form>
-                {/* Button to close the modal */}
-                <Button onClick={onClose} className="mt-4">Close</Button> 
+                <Button
+                    onClick={handleGoogleSignIn}
+                    disabled={googleLoading}
+                    className="w-full mb-2"
+                >
+                    {googleLoading ? "Loading..." : "Sign in with Google"}
+                </Button>
+                <Button
+                    onClick={handleGithubSignIn}
+                    disabled={githubLoading}
+                    className="w-full"
+                >
+                    {githubLoading ? "Loading..." : "Sign in with GitHub"}
+                </Button>
+                <Button
+                    onClick={onClose}
+                    variant="ghost"
+                    className="mt-4 text-sm text-gray-600 hover:text-gray-800"
+                >
+                    Close
+                </Button>
             </dialog>
         </div>
     );
