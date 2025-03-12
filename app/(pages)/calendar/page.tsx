@@ -23,20 +23,23 @@ export default function CalendarPage() {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        console.error('API Error:', errorData);
-        throw new Error(errorData.error || 'Failed to process calendar request');
+        throw new Error('Failed to process calendar request');
       }
 
       const data = await response.json();
       
-      // Extract the actual output from the response
-      const output = data.output || data.result;
+      // Include any intermediate steps in the response
+      let resultContent = data.result;
+      
+      // If there are steps, show them for debugging
+      if (data.steps && data.steps.length > 0) {
+        resultContent += "\n\n(Debug: Agent executed " + data.steps.length + " steps)";
+      }
       
       // Add assistant response to chat
       setMessages(prev => [...prev, { 
         role: 'assistant', 
-        content: typeof output === 'string' ? output : JSON.stringify(output) 
+        content: resultContent
       }]);
     } catch (error) {
       console.error('Error:', error);

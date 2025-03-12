@@ -140,4 +140,46 @@ export class ChatNvidiaLLM extends LLM {
       throw error;
     }
   }
+
+  async getMessages(prompt: string | string[] | any): Promise<any[]> {
+    if (Array.isArray(prompt) && prompt.length > 0 && typeof prompt[0] === 'object' && 'role' in prompt[0]) {
+      return prompt;
+    }
+    
+    if (typeof prompt === 'string') {
+      return [{ role: 'user', content: prompt }];
+    }
+    
+    if (Array.isArray(prompt)) {
+      return prompt.map(p => ({ role: 'user', content: p }));
+    }
+    
+    // Handle LangChain message format
+    if (prompt.messages) {
+      return prompt.messages.map((msg: any) => ({
+        role: msg.type === 'human' ? 'user' : 'assistant',
+        content: msg.content
+      }));
+    }
+    
+    return [{ role: 'user', content: String(prompt) }];
+  }
+
+  _formatMessages(prompt: any) {
+    // This helper ensures messages are properly formatted
+    if (Array.isArray(prompt) && prompt.length > 0 && typeof prompt[0] === 'object') {
+      // If it's already an array of message objects
+      return prompt;
+    }
+    
+    if (typeof prompt === 'string') {
+      return [{ role: 'user', content: prompt }];
+    }
+    
+    if (Array.isArray(prompt)) {
+      return prompt.map(p => ({ role: 'user', content: p }));
+    }
+    
+    return [{ role: 'user', content: String(prompt) }];
+  }
 }

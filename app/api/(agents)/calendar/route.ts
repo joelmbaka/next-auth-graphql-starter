@@ -2,27 +2,10 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/auth";
 import { ChatNvidiaLLM } from "@/lib/tools/nvidia/ChatNVIDIA";
-import { PromptTemplate } from "@langchain/core/prompts";
-import { getGoogleCalendarTools } from "@/lib/tools/googleapi/calendar";
-import { AgentExecutor, createStructuredChatAgent } from "langchain/agents";
-
-// Add this interface at the beginning of the file or before the POST function
-interface CalendarEvent {
-  summary: string;
-  start: {
-    dateTime: string;
-    timeZone?: string;
-  };
-  end: {
-    dateTime: string;
-    timeZone?: string;
-  };
-  location?: string;
-  description?: string;
-  attendees?: any[];
-  status?: string;
-  eventType?: string;
-}
+import {
+  GoogleCalendarCreateTool,
+  GoogleCalendarViewTool
+} from "@langchain/community/tools/google_calendar";
 
 export async function POST(request: Request) {
   try {
@@ -41,414 +24,201 @@ export async function POST(request: Request) {
       );
     }
 
-    // Initialize LLM
+    console.log("Processing calendar request:", input);
+    
+    // Initialize NVIDIA LLM for understanding natural language
     const model = new ChatNvidiaLLM({
       apiKey: process.env.NVIDIA_API_KEY || "",
       model: "meta/llama-3.3-70b-instruct",
+      temperature: 0.2,
     });
 
-    // Patch missing methods
-    (model as any).disableStreaming = () => {};
-    (model as any).getLsParams = () => ({});
-    (model as any).callPrompt = async (prompt: any) => {
-      return { text: "dummy calendar response" };
-    };
-    (model as any).call = async (prompt: any, options?: any) => {
-      return "dummy calendar call result";
-    };
-
-    // Consolidated time functions
-    function getTimeInfo(hour?: number, minute: number = 0) {
-      const now = new Date();
-      if (hour !== undefined) {
-        now.setHours(hour, minute, 0, 0);
-      }
-      return {
-        date: now.toISOString().split('T')[0],
-        iso: now.toISOString(),
-        time: now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
-      };
-    }
-
-    // Modified time context function to handle time zones
-    function getTimeContext(eventStart: string, eventEnd: string, timeZone: string) {
-      const now = new Date();
-      const start = new Date(eventStart);
-      const end = new Date(eventEnd);
-
-      // Convert current time to the event's timezone
-      const currentInEventTZ = new Date(now.toLocaleString('en-US', { timeZone }));
-
-      if (currentInEventTZ < start) return "upcoming";
-      if (currentInEventTZ >= start && currentInEventTZ <= end) return "ongoing";
-      return "past";
-    }
-
-    // Update usage throughout the code
-    const today = getTimeInfo().date;
-    const exampleStart = getTimeInfo(17).iso; // 5:00 PM today
-    const exampleEnd = getTimeInfo(18).iso;   // 6:00 PM today
-
-    // Get Google Calendar tools
-    const tools = getGoogleCalendarTools(session.accessToken, model);
-
-    // Calendar query examples for few-shot learning
-    const calendarExamples = [
-      {
-        query: "What's on my calendar today?",
-        action: "google_calendar_view",
-        action_input: `{"start": "today", "end": "today"}`,
-        explanation: "Used the view tool to check today's events"
-      },
-      {
-        query: "Do I have any meetings tomorrow?",
-        action: "google_calendar_view",
-        action_input: `{"start": "tomorrow", "end": "tomorrow"}`,
-        explanation: "Used the view tool to check tomorrow's events"
-      },
-      {
-        query: "What's my schedule for next week?",
-        action: "google_calendar_view",
-        action_input: `{"start": "next monday", "end": "next sunday"}`,
-        explanation: "Used the view tool to see next week's events"
-      },
-      {
-        query: "Show me my events for November 15th",
-        action: "google_calendar_view",
-        action_input: `{"start": "2023-11-15", "end": "2023-11-15"}`,
-        explanation: "Used the view tool with specific date format"
-      },
-      {
-        query: "Am I free this afternoon?",
-        action: "google_calendar_view",
-        action_input: `{"start": "today 12:00:00", "end": "today 18:00:00"}`,
-        explanation: "Used the view tool with time range for today's afternoon"
-      }
-    ];
+    // First - determine intent with a simple prompt
+    const intentResponse = await model.call(
+      `You are a helpful assistant that categorizes user requests about calendars.
+      Based on the following request, tell me if the user wants to:
+      1. CREATE a new calendar event
+      2. VIEW existing calendar events
+      3. Something else (explain what)
+      
+      Only respond with the category number and a one-word explanation.
+      Example: "1:CREATE" or "2:VIEW" or "3:DELETE"
+      
+      User request: "${input}"`
+    );
     
-    // Example selector function with proper typing
-    function selectRelevantExamples(input: string) {
-      // Simple keyword matching logic
-      const relevantExamples = calendarExamples.filter(example => {
-        const matchTerms = [
-          "today", "tomorrow", "schedule", "free", "busy", "meetings", 
-          "calendar", "events", "week", "month", "afternoon", "morning"
-        ];
+    console.log("Intent detection:", intentResponse);
+    
+    // Setup calendar tools
+    const googleCalendarParams = {
+      credentials: {
+        accessToken: session.accessToken,
+        calendarId: "primary",
+      },
+      scopes: [
+        "https://www.googleapis.com/auth/calendar",
+        "https://www.googleapis.com/auth/calendar.events",
+      ],
+      model,
+    };
+
+    // Create calendar tools
+    const viewTool = new GoogleCalendarViewTool(googleCalendarParams);
+    const createTool = new GoogleCalendarCreateTool(googleCalendarParams);
+    
+    // Process based on intent
+    if (intentResponse.includes("1:CREATE") || intentResponse.toLowerCase().includes("create")) {
+      // Extract event details with LLM
+      const eventDetailsResponse = await model.call(
+        `You are a helpful assistant that extracts calendar event details from user requests.
+        Extract the following details from the user's request and return ONLY a JSON object:
+        {
+          "summary": "Event title/description",
+          "startTime": "Time when event starts (e.g., 3:00 PM)",
+          "duration": "Duration in minutes (default 30 if not specified)",
+          "date": "Date of event (default today if not specified)"
+        }
         
-        // Check if any match terms are in both the input and example query
-        return matchTerms.some(term => 
-          input.toLowerCase().includes(term) && 
-          example.query.toLowerCase().includes(term)
-        );
-      });
-      
-      // Return up to 3 most relevant examples, or at least the first example if none match
-      return relevantExamples.length > 0 ? 
-        relevantExamples.slice(0, 3) : 
-        [calendarExamples[0]];
-    }
-    
-    // Get relevant examples based on user input
-    const relevantExamples = selectRelevantExamples(input);
-    
-    // Create example-enhanced prompt
-    let examplesText = "RELEVANT EXAMPLES:\n";
-    relevantExamples.forEach(ex => {
-      examplesText += `\nQuery: "${ex.query}"\n`;
-      examplesText += `Tool: ${ex.action}\n`;
-      examplesText += `Input: ${ex.action_input}\n`;
-      examplesText += `(${ex.explanation})\n`;
-    });
-    
-    // Add examples to the prompt template
-    const promptTemplate = `
-    You are a helpful assistant that can create and manage Google Calendar events.
-
-    TOOLS:
-    ------
-    You have access to the following tools: {tool_names}
-
-    {tools}
-
-    To use a tool, please use the following format:
-    
-    \`\`\`
-    Thought: I need to use a tool to help with this request.
-    Action: tool_name
-    Action Input: {{
-      "param1": "value1",
-      "param2": "value2"
-    }}
-    \`\`\`
-    
-    CREATING SIMPLE CALENDAR EVENTS:
-    - ALWAYS format the calendar input EXACTLY like this (no deviations):
-      {{
-        "summary": "Event Title",
-        "start": {{
-          "dateTime": "${exampleStart}"
-        }},
-        "end": {{
-          "dateTime": "${exampleEnd}"
-        }}
-      }}
-
-    - VERY IMPORTANT: Make sure your JSON is well-formed
-    - The input MUST be valid JSON that can be parsed by JSON.parse()
-    - Do not add any comments or text before or after the JSON
-    - You must escape any quotes inside the summary or description
-
-    COMMON MISTAKES TO AVOID:
-    - Never include functions or methods in your JSON
-    - Don't use single quotes for JSON properties or values
-    - Ensure all brackets and braces are properly closed
-    - Don't include undefined or non-JSON values
-    
-    - Use today's date: ${today}
-    - Always specify both start and end times
-    - End time should be at least 30 minutes after start time
-    - Use ISO format with Z suffix (UTC time)
-    
-    VIEWING CALENDAR EVENTS:
-    - Use google_calendar_view with these exact parameters:
-      {{
-        "start": "today",
-        "end": "tomorrow" 
-      }}
-    
-    ERROR HANDLING:
-    - If you get an error response starting with "ERROR:", report this to the user
-    - If you get "No events found", tell the user they have no events for that time period
-    - Never make up or assume calendar events if the tool doesn't return any
-    - If access token errors occur, tell the user they need to sign in again
-    
-    TIME CONTEXT:
-    - When reporting events, ALWAYS include the time context:
-      * For upcoming events: "You have an upcoming event 'Team Meeting' from 2:00 PM to 3:00 PM today"
-      * For ongoing events: "You currently have an ongoing event 'Team Meeting' until 3:00 PM"
-      * For past events: "You had an event 'Team Meeting' that ended at 3:00 PM"
-
-    - When creating events, warn if the time is in the past:
-      "Warning: The time you specified is in the past. Do you want to create this event anyway?"
-    
-    FINAL RESPONSE FORMATTING:
-    - When displaying event times to users, ALWAYS convert from UTC to their local time
-    - Do not mention "UTC" in your responses - display times in the user's local timezone
-    - For event creation confirmations, say: "Event 'Meeting with John' created for 3:00 PM to 4:00 PM today" 
-    - For event listings, say: "You have an event 'Team Meeting' from 2:00 PM to 3:00 PM today"
-    - When no events are found, say: "You don't have any events scheduled for that time period"
-    - Always use 12-hour time format with AM/PM
-
-    When you have a final response for the human, you MUST use:
-    {{
-      "action": "Final Answer",
-      "action_input": "Your detailed response here"
-    }}
-
-    HUMAN: {input}
-    ASSISTANT: I'll help you with your Google Calendar. {agent_scratchpad}
-`;
-
-    const agentRunnable = await createStructuredChatAgent({
-      llm: model,
-      tools: tools as any,
-      prompt: PromptTemplate.fromTemplate(promptTemplate),
-    });
-
-    // Execute the agent with a reduced iteration limit
-    const executor = AgentExecutor.fromAgentAndTools({
-      agent: agentRunnable,
-      tools: tools as any,
-      verbose: true,
-      maxIterations: 4, // Increased slightly but still limited
-      returnIntermediateSteps: true, // Return all steps for debugging
-    });
-
-    console.log("Executing agent with input:", input);
-    const result = await executor.invoke({ input });
-    console.log("Agent execution result:", result);
-
-    // Update the final response handling to filter events based on query
-    let finalOutput = "";
-    if (result.output?.includes("max iterations") || 
-        result.output === "Agent stopped due to max iterations.") {
-      console.log("Agent hit max iterations. Steps:", result.intermediateSteps);
-      
-      // Check if there was a specific error in the steps
-      const lastStep = result.intermediateSteps?.[result.intermediateSteps.length - 1];
-      const errorMessage = lastStep?.observation || "";
-      
-      if (errorMessage.includes("Bad Request")) {
-        finalOutput = "I wasn't able to create your event due to a formatting issue. Please try specifying a clearer time, like 'create an event tomorrow at 5pm called Team Meeting'.";
-      } else {
-        finalOutput = "I wasn't able to complete your calendar request. Please try again with more specific details about the event time and title.";
-      }
-    } else {
-      // IMPORTANT CHANGE: Extract and use the actual raw calendar data
-      // Instead of taking the agent's fabricated answer, we'll use the real API response
-      const calendarStep = result.intermediateSteps?.find((step: any) => 
-        step.action?.tool === "google_calendar_view" &&
-        step.observation && 
-        step.observation.includes("[") && 
-        step.observation.includes("]")
+        User request: "${input}"`
       );
       
-      if (calendarStep) {
-        try {
-          // Extract the JSON part from the observation
-          const jsonStart = calendarStep.observation.indexOf('[');
-          const jsonEnd = calendarStep.observation.lastIndexOf(']') + 1;
-          const jsonString = calendarStep.observation.slice(jsonStart, jsonEnd);
-          
-          // Parse the actual calendar response
-          let events = JSON.parse(jsonString);
-          if (Array.isArray(events) && events.length > 0) {
-            // Determine what type of events the user is asking about
-            const userQuery = input.toLowerCase();
-            const isAppointmentQuery = userQuery.includes('appointment') || 
-                                      userQuery.includes('meeting') || 
-                                      userQuery.includes('consultation') ||
-                                      userQuery.includes('interview');
-            const isTaskQuery = userQuery.includes('task') || 
-                                userQuery.includes('todo') || 
-                                userQuery.includes('assignment');
-            const isSocialQuery = userQuery.includes('social') || 
-                                 userQuery.includes('party') || 
-                                 userQuery.includes('gathering');
-            
-            // Filter events based on query type
-            if (isAppointmentQuery) {
-              const filteredEvents = events.filter(event => {
-                const eventType = determineEventType(event);
-                return eventType === 'appointment';
-              });
-              
-              if (filteredEvents.length > 0) {
-                events = filteredEvents;
-                finalOutput = `You have ${events.length} appointment${events.length > 1 ? 's' : ''}:\n\n`;
-                
-                events.forEach((event: any) => {
-                  const start = new Date(event.start.dateTime);
-                  const end = new Date(event.end.dateTime);
-                  const duration = Math.round((end.getTime() - start.getTime()) / (1000 * 60));
-                  
-                  const timeInfo = start.toLocaleTimeString('en-US', {
-                    hour: 'numeric',
-                    minute: '2-digit',
-                    timeZone: event.start.timeZone || 'UTC'
-                  });
-                  
-                  finalOutput += `• ${event.summary || 'Meeting'} at ${timeInfo} (${duration} minutes)`;
-                  
-                  // Add attendees if present
-                  if (event.attendees?.length > 0) {
-                    const attendees = event.attendees
-                      .filter((a: any) => a.email !== session.user.email)
-                      .map((a: any) => a.email.split('@')[0])
-                      .join(', ');
-                    
-                    if (attendees) finalOutput += ` with ${attendees}`;
-                  }
-                  
-                  // Add location if available
-                  if (event.location) {
-                    finalOutput += ` in ${event.location}`;
-                  }
-                  
-                  finalOutput += '\n';
-                });
-              } else {
-                finalOutput = "You don't have any appointments scheduled for this period.";
-              }
-            } else if (isTaskQuery) {
-              const filteredEvents = events.filter(event => {
-                const eventType = determineEventType(event);
-                return eventType === 'task';
-              });
-              
-              if (filteredEvents.length > 0) {
-                events = filteredEvents;
-                finalOutput = `You have ${events.length} task${events.length > 1 ? 's' : ''} scheduled:\n\n`;
-                
-                events.forEach((event: any) => {
-                  const start = new Date(event.start.dateTime);
-                  const end = new Date(event.end.dateTime);
-                  const duration = Math.round((end.getTime() - start.getTime()) / (1000 * 60));
-                  
-                  const timeInfo = start.toLocaleTimeString('en-US', {
-                    hour: 'numeric',
-                    minute: '2-digit',
-                    timeZone: event.start.timeZone || 'UTC'
-                  });
-                  
-                  finalOutput += `• ${event.summary || 'Untitled Task'} at ${timeInfo} (${duration} minutes)\n`;
-                });
-              } else {
-                finalOutput = "You don't have any tasks scheduled for this period.";
-              }
-            } else if (isSocialQuery) {
-              const filteredEvents = events.filter(event => {
-                const eventType = determineEventType(event);
-                return eventType === 'social event';
-              });
-              
-              if (filteredEvents.length > 0) {
-                events = filteredEvents;
-                finalOutput = `You have ${events.length} social event${events.length > 1 ? 's' : ''} scheduled.\n\n`;
-              } else {
-                finalOutput = "You don't have any social events scheduled for this period.\n\n";
-              }
-            } else {
-              // General events query
-              finalOutput = `You have ${events.length} event${events.length > 1 ? 's' : ''} scheduled.\n\n`;
-
-              // Process each filtered event individually
-              events.forEach((event: any) => {
-                const start = new Date(event.start.dateTime);
-                const end = new Date(event.end.dateTime);
-                const duration = Math.round((end.getTime() - start.getTime()) / (1000 * 60));
-                
-                const timeInfo = start.toLocaleTimeString('en-US', {
-                  hour: 'numeric',
-                  minute: '2-digit',
-                  timeZone: event.start.timeZone || 'UTC'
-                });
-                
-                finalOutput += `• ${event.summary || 'Untitled Event'} at ${timeInfo} (${duration} minutes)`;
-                
-                // Add attendees if present
-                if (event.attendees?.length > 0) {
-                  const attendees = event.attendees
-                    .filter((a: any) => a.email !== session.user.email)
-                    .map((a: any) => a.email.split('@')[0])
-                    .join(', ');
-                  
-                  if (attendees) finalOutput += ` with ${attendees}`;
-                }
-                
-                // Add location if available
-                if (event.location) {
-                  finalOutput += ` in ${event.location}`;
-                }
-                
-                finalOutput += '\n';
-              });
-            }
-          } else {
-            finalOutput = "You don't have any events scheduled for that time period";
-          }
-        } catch (error) {
-          console.error("Error parsing calendar response:", error);
-          finalOutput = result.output;
+      console.log("Extracted event details:", eventDetailsResponse);
+      
+      try {
+        // Parse the LLM response to get event details
+        const eventDetails = JSON.parse(
+          eventDetailsResponse.replace(/```json|```/g, '').trim()
+        );
+        
+        // Process time and date
+        const now = new Date();
+        const eventDate = eventDetails.date && eventDetails.date.toLowerCase() !== "today"
+          ? new Date(eventDetails.date)
+          : now;
+        
+        // Parse time (e.g., "3:00 PM")
+        let [hourStr, minuteStr] = (eventDetails.startTime || "").split(":");
+        let hour = parseInt(hourStr || "0");
+        let isPM = false;
+        
+        if (minuteStr && minuteStr.toLowerCase().includes("pm")) {
+          isPM = true;
+          minuteStr = minuteStr.toLowerCase().replace("pm", "").trim();
+        } else if (minuteStr && minuteStr.toLowerCase().includes("am")) {
+          minuteStr = minuteStr.toLowerCase().replace("am", "").trim();
         }
-      } else {
-        finalOutput = result.output;
+        
+        let minute = parseInt(minuteStr || "0");
+        
+        // Adjust for PM
+        if (isPM && hour < 12) hour += 12;
+        
+        // Set event times
+        const startDate = new Date(eventDate);
+        startDate.setHours(hour, minute, 0, 0);
+        
+        const duration = parseInt(eventDetails.duration || "30");
+        const endDate = new Date(startDate);
+        endDate.setMinutes(endDate.getMinutes() + duration);
+        
+        // Create event in Google Calendar
+        const eventData = {
+          summary: eventDetails.summary || "New Event",
+          start: { dateTime: startDate.toISOString() },
+          end: { dateTime: endDate.toISOString() }
+        };
+        
+        console.log("Creating calendar event:", eventData);
+        const result = await createTool.call(JSON.stringify(eventData));
+        
+        // Generate user-friendly response with LLM
+        const finalResponse = await model.call(
+          `You are a helpful calendar assistant. The user requested to create an event with these details:
+          - Title: ${eventDetails.summary}
+          - Time: ${eventDetails.startTime} on ${eventDetails.date || "today"}
+          - Duration: ${duration} minutes
+          
+          The event was successfully created. Please provide a friendly confirmation message.`
+        );
+        
+        return NextResponse.json({
+          result: finalResponse,
+          steps: [{
+            tool: "google_calendar_create",
+            input: JSON.stringify(eventData),
+            output: result
+          }]
+        });
+      } catch (error) {
+        console.error("Error creating event:", error);
+        return NextResponse.json({
+          result: "I had trouble creating your calendar event. Please try again with more specific details.",
+          error: String(error)
+        });
       }
+    } else if (intentResponse.includes("2:VIEW") || intentResponse.toLowerCase().includes("view")) {
+      // Extract view parameters
+      const viewDetailsResponse = await model.call(
+        `You are a helpful assistant that extracts calendar viewing parameters.
+        Extract the following details from the user's request and return ONLY a JSON object:
+        {
+          "timeRange": "time range (e.g., 'today', 'tomorrow', 'this week')",
+          "startTime": "optional specific start time",
+          "endTime": "optional specific end time"
+        }
+        
+        User request: "${input}"`
+      );
+      
+      try {
+        const viewDetails = JSON.parse(
+          viewDetailsResponse.replace(/```json|```/g, '').trim()
+        );
+        
+        // Default to viewing today's events
+        const viewParams = {
+          start: viewDetails.timeRange || "today",
+          end: viewDetails.timeRange || "today"
+        };
+        
+        if (viewDetails.startTime) viewParams.start += ` ${viewDetails.startTime}`;
+        if (viewDetails.endTime) viewParams.end += ` ${viewDetails.endTime}`;
+        
+        console.log("Viewing calendar with params:", viewParams);
+        const result = await viewTool.call(JSON.stringify(viewParams));
+        
+        // Format the results nicely
+        const formattingResponse = await model.call(
+          `You are a helpful calendar assistant. The user asked to view their calendar events for ${viewDetails.timeRange || "today"}.
+          
+          Here are the raw results:
+          ${result}
+          
+          Please format this information in a clean, user-friendly way. If no events were found, let the user know their schedule is clear.`
+        );
+        
+        return NextResponse.json({
+          result: formattingResponse,
+          steps: [{
+            tool: "google_calendar_view",
+            input: JSON.stringify(viewParams),
+            output: result
+          }]
+        });
+      } catch (error) {
+        console.error("Error viewing calendar:", error);
+        return NextResponse.json({
+          result: "I had trouble accessing your calendar. Please try again with a simpler request.",
+          error: String(error)
+        });
+      }
+    } else {
+      // Handle other intents
+      return NextResponse.json({
+        result: "I'm not sure what calendar operation you want to perform. Try asking to create an event or view your calendar.",
+        steps: []
+      });
     }
-
-    // Return the result
-    return NextResponse.json({ result: finalOutput });
-
   } catch (error: any) {
     console.error("Google Calendar API Error:", error);
     return NextResponse.json(
@@ -456,81 +226,4 @@ export async function POST(request: Request) {
       { status: 500 }
     );
   }
-}
-
-// Update the determineEventType function to use Google's official eventType property
-function determineEventType(event: any): string {
-  // First check if the event has an official Google eventType
-  if (event.eventType) {
-    switch (event.eventType) {
-      case 'outOfOffice':
-        return 'out-of-office';
-      case 'focusTime':
-        return 'focus time';
-      case 'workingLocation':
-        return 'working location';
-      case 'fromGmail':
-        return 'appointment'; // Gmail-generated events are often meetings/appointments
-      case 'birthday':
-        return 'birthday';
-      // Handle other official types as needed
-    }
-  }
-  
-  // Fall back to custom classification if no official type or just 'default'
-  const summary = (event.summary || '').toLowerCase();
-  const description = (event.description || '').toLowerCase();
-  const duration = calculateEventDurationMinutes(event);
-  const hasAttendees = event.attendees && event.attendees.length > 0;
-  const hasLocation = !!event.location;
-  
-  // Update appointment keywords for better detection
-  const appointmentKeywords = [
-    'meet', 'meeting', 'appointment', 'interview', 'consultation', 
-    'doctor', 'dentist', 'call', 'client', 'conference', 
-    'discussion', 'session', 'booking', 'reservation', 'checkup',
-    'visit', 'review', 'demo', 'presentation', 'workshop'
-  ];
-  
-  // Update the appointment detection logic
-  if ((hasAttendees || appointmentKeywords.some(keyword => 
-       summary.includes(keyword) || description.includes(keyword))) &&
-      (duration >= 15 && duration <= 240)) { // 15min-4hr duration
-    return 'appointment';
-  }
-  
-  // Check for social events
-  const socialKeywords = ['party', 'celebration', 'dinner', 'lunch', 'coffee', 'drinks', 'hangout', 'gathering'];
-  if (socialKeywords.some(keyword => summary.includes(keyword) || description.includes(keyword))) {
-    return 'social event';
-  }
-  
-  // Update task detection in determineEventType
-  const taskKeywords = [
-    'todo', 'task', 'reminder', 'complete', 'finish', 
-    'review', 'submit', 'deadline', 'due', 'apply',
-    'job', 'assignment', 'errand', 'chore', 'work on',
-    'follow up', 'prep', 'prepare', 'organize'
-  ];
-
-  if (taskKeywords.some(keyword => 
-    summary.includes(keyword) || 
-    description.includes(keyword)) ||
-    (duration <= 45 && !hasAttendees)) { // Tasks are often shorter and solo
-    return 'task';
-  }
-  
-  // Default to generic event
-  return 'event';
-}
-
-// Helper function to calculate event duration in minutes
-function calculateEventDurationMinutes(event: any): number {
-  if (!event.start?.dateTime || !event.end?.dateTime) {
-    return 60; // Default 1 hour if missing timestamps
-  }
-  
-  const start = new Date(event.start.dateTime);
-  const end = new Date(event.end.dateTime);
-  return Math.round((end.getTime() - start.getTime()) / (1000 * 60));
 }
