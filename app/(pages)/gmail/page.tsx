@@ -14,7 +14,7 @@ export default function EmailPage() {
       setMessages(prev => [...prev, { role: 'user', content: input }]);
       
       // Call email API
-      const response = await fetch('/api/email', {
+      const response = await fetch('/api/gmail', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
