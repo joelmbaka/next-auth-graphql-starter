@@ -14,7 +14,7 @@ import {
     SidebarMenuSubItem,
     SidebarMenuSubButton,
   } from "@/components/ui/sidebar"
-  import { ArrowUpRight, Newspaper, ChevronDown, PenSquare, Twitter, Facebook, Linkedin, FileText, Share2 } from "lucide-react"
+  import { ArrowUpRight, Newspaper, ChevronDown, PenSquare, Twitter, Facebook, Linkedin, FileText, Share2, Users } from "lucide-react"
   import { SiteSwitcher } from "@/components/navigation/SiteSwitcher"
   import { signOut, useSession } from "next-auth/react"
   import { useState } from "react"
@@ -23,49 +23,49 @@ import Image from 'next/image'
 
   const menuItems = [
    {
-     title: "Productivity",
+     title: "Calendar",
      icon: PenSquare,
      subItems: [
-       {title: "Google Calendar", url: "/dashboard/calendar"},
-       {title: "Gmail", url: "/dashboard/gmail"},
-       {title: "Read Emails", url: "/dashboard/gmail/read"},
-       {title: "Craft an Email", url: "/dashboard/gmail/write"}
+       {title: "Google Calendar", url: "/calendar"},
+       {title: "Gmail", url: "/gmail"},
+       {title: "Read Emails", url: "/gmail/read"},
+       {title: "Craft an Email", url: "/gmail/write"}
      ]
    },
    {
-     title: "News Feed", 
+     title: "People", 
      icon: Newspaper,
-     url: "/dashboard/news",
+     url: "/people",
      subItems: [
-       {title: "Fetch Latest News", url: "/dashboard/news/fetch"},
-       {title: "Craft an Article", url: "/dashboard/news/craft"}
+       {title: "Fetch People", url: "/people/fetch"},
+       {title: "Craft an Article", url: "/people/craft"}
      ]
    },
    {
-     title: "Social",
+     title: "Gmail",
      icon: Share2,
      subItems: [
-       {
-         title: "YouTube",
-         icon: Video,
-         subItems: [
-           {title: "My Subscriptions", url: "/dashboard/youtube/subscriptions"},
-           {title: "Search Channels", url: "/dashboard/youtube/search-channels"},
-           {title: "Search Videos", url: "/dashboard/youtube/search-videos"}
-         ]
-       },
-       {title: "X.com", url: "/dashboard/x", icon: Twitter},
-       {title: "Facebook.com", url: "/dashboard/facebook", icon: Facebook},
-       {title: "LinkedIn.com", url: "/dashboard/linkedin", icon: Linkedin}
+       {title: "X.com", url: "/gmail/x", icon: Twitter},
+       {title: "Facebook.com", url: "/gmail/facebook", icon: Facebook},
+       {title: "LinkedIn.com", url: "/gmail/linkedin", icon: Linkedin}
      ]
    },
    {
      title: "Content Studio",
      icon: FileText,
      subItems: [
-       {title: "X content", url: "/dashboard/content/x"},
-       {title: "Facebook content", url: "/dashboard/content/facebook"},
-       {title: "LinkedIn content", url: "/dashboard/content/linkedin"}
+       {title: "X content", url: "/content/x"},
+       {title: "Facebook content", url: "/content/facebook"},
+       {title: "LinkedIn content", url: "/content/linkedin"}
+     ]
+   },
+   {
+     title: "Contacts",
+     icon: Users,
+     url: "/contacts",
+     subItems: [
+       { title: "View Contacts", url: "/contacts" },
+       { title: "Add Contact", url: "/contacts/add" }
      ]
    },
   ]
