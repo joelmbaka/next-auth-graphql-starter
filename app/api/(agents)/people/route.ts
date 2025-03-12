@@ -93,6 +93,18 @@ User request: "${input}"`
       });
       const results = response.data.results || [];
 
+      // If no results are found, return a simple friendly message
+      if (results.length === 0) {
+         return NextResponse.json({
+           result: `No contacts found matching "${searchQuery}".`,
+           steps: [{
+             tool: "people_search",
+             input: { query: searchQuery },
+             output: results,
+           }],
+         });
+      }
+
       const formattingResponse = await model.call(
         `You are a helpful assistant for Google Contacts. Format the following search results in a clean, user-friendly summary. Only include each contact's name, email, and phone number (if available):
 ${JSON.stringify(results)}`
@@ -139,6 +151,7 @@ User request: "${input}"`
         }] : [],
         phoneNumbers: contactDetails.phone ? [{
           value: contactDetails.phone,
+          type: "mobile",
         }] : [],
       };
 
