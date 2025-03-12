@@ -19,6 +19,40 @@ interface EmailParams {
   bcc?: string;
 }
 
+// Replace the LangChain tool calls with direct Google API calls
+// For creating drafts:
+async function createDraft(accessToken: string, emailData: EmailParams) {
+  const url = 'https://gmail.googleapis.com/gmail/v1/users/me/drafts';
+  
+  // Convert the email data to the format expected by Gmail API
+  const message = {
+    raw: Buffer.from(
+      `To: ${emailData.to}\r\n` +
+      `Subject: ${emailData.subject}\r\n` +
+      (emailData.cc ? `Cc: ${emailData.cc}\r\n` : '') +
+      (emailData.bcc ? `Bcc: ${emailData.bcc}\r\n` : '') +
+      '\r\n' +
+      emailData.body
+    ).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+  };
+  
+  // Call the Gmail API directly
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ message })
+  });
+  
+  if (!response.ok) {
+    throw new Error(`Gmail API error: ${response.status} ${response.statusText}`);
+  }
+  
+  return await response.json();
+}
+
 export async function POST(request: Request) {
   try {
     // Authentication check
@@ -234,17 +268,27 @@ export async function POST(request: Request) {
         );
         
         // Prepare the draft email with correct schema
-        const draftParams: EmailParams = {
-          to: draftDetails.to,
-          subject: draftDetails.subject || "No subject",
-          body: draftDetails.body || "Draft email body",
+        const draftParams = {
+          message: {
+            to: draftDetails.to,
+            subject: draftDetails.subject || "No subject",
+            body: draftDetails.body || "Draft email body",
+            cc: undefined,
+            bcc: undefined
+          }
         };
         
-        if (draftDetails.cc) draftParams.cc = draftDetails.cc;
-        if (draftDetails.bcc) draftParams.bcc = draftDetails.bcc;
+        if (draftDetails.cc) draftParams.message.cc = draftDetails.cc;
+        if (draftDetails.bcc) draftParams.message.bcc = draftDetails.bcc;
+        
+        // Validate email format
+        if (!draftDetails.to.includes('@')) {
+          // Add default domain if missing
+          draftParams.message.to = `${draftDetails.to}@gmail.com`;
+        }
         
         console.log("Creating draft email with correct schema:", draftParams);
-        const result = await createDraftTool.call(JSON.stringify(draftParams));
+        const result = await createDraft(session.accessToken, draftParams.message);
         
         // Format a nice response
         const formattingResponse = await model.call(
@@ -308,17 +352,27 @@ export async function POST(request: Request) {
         );
         
         // Create a draft with correct schema
-        const draftParams: EmailParams = {
-          to: sendDetails.to,
-          subject: sendDetails.subject || "No subject",
-          body: sendDetails.body || "Email body",
+        const draftParams = {
+          message: {
+            to: sendDetails.to,
+            subject: sendDetails.subject || "No subject",
+            body: sendDetails.body || "Email body",
+            cc: undefined,
+            bcc: undefined
+          }
         };
         
-        if (sendDetails.cc) draftParams.cc = sendDetails.cc;
-        if (sendDetails.bcc) draftParams.bcc = sendDetails.bcc;
+        if (sendDetails.cc) draftParams.message.cc = sendDetails.cc;
+        if (sendDetails.bcc) draftParams.message.bcc = sendDetails.bcc;
+        
+        // Validate email format
+        if (!sendDetails.to.includes('@')) {
+          // Add default domain if missing
+          draftParams.message.to = `${sendDetails.to}@gmail.com`;
+        }
         
         console.log("Creating draft email instead of sending with correct schema:", draftParams);
-        const result = await createDraftTool.call(JSON.stringify(draftParams));
+        const result = await createDraft(session.accessToken, draftParams.message);
         
         return NextResponse.json({
           result: confirmationResponse,

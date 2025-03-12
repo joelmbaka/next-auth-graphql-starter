@@ -210,9 +210,9 @@ export async function POST(request: Request) {
         return NextResponse.json({
           result: "I had trouble accessing your calendar. Please try again with a simpler request.",
           error: String(error)
-        });
-      }
-    } else {
+              });
+            }
+          } else {
       // Handle other intents
       return NextResponse.json({
         result: "I'm not sure what calendar operation you want to perform. Try asking to create an event or view your calendar.",
