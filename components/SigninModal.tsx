@@ -3,9 +3,6 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { signIn } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
-import { Github } from 'lucide-react';
-import { FaGoogle } from 'react-icons/fa';
 
 interface SigninModalProps {
     // Props for the SigninModal component
@@ -16,7 +13,6 @@ interface SigninModalProps {
 // Functional component for the SigninModal
 const SigninModal: React.FC<SigninModalProps> = ({ isOpen, onClose }) => {
     // Hook to programmatically navigate
-    const router = useRouter(); 
     const [googleLoading, setGoogleLoading] = useState(false);
     const [githubLoading, setGithubLoading] = useState(false);
 

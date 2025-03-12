@@ -24,7 +24,8 @@ export class RedisMemory extends BaseChatMemory {
         this.embeddingKey = fields.embeddingKey || "embeddings";
     }
 
-    async loadMemoryVariables(values: InputValues) {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    async loadMemoryVariables(_values: InputValues) {
         try {
             const history = await this.redis.get(`${this.sessionId}:${this.memoryKey}`);
             const embeddings = await this.redis.get(`${this.sessionId}:${this.embeddingKey}`);

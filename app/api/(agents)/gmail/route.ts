@@ -5,9 +5,7 @@ import { ChatNvidiaLLM } from "@/lib/tools/nvidia/ChatNVIDIA";
 import {
   GmailGetMessage,
   GmailSearch,
-  GmailCreateDraft,
   GmailGetThread,
-  GmailSendMessage,
 } from '@langchain/community/tools/gmail';
 
 // Simplified email interface matching the expected schema
@@ -106,9 +104,10 @@ export async function POST(request: Request) {
     // Create Gmail tools
     const searchTool = new GmailSearch({ credentials });
     const getMessageTool = new GmailGetMessage({ credentials });
-    const createDraftTool = new GmailCreateDraft({ credentials });
+    // Remove or comment out unused tools
+    // const createDraftTool = new GmailCreateDraft({ credentials });
     const getThreadTool = new GmailGetThread({ credentials });
-    const sendMessageTool = new GmailSendMessage({ credentials });
+    // const sendMessageTool = new GmailSendMessage({ credentials });
     
     // Process based on intent
     if (intentResponse.includes("1:SEARCH") || intentResponse.toLowerCase().includes("search")) {
@@ -484,10 +483,10 @@ export async function POST(request: Request) {
         steps: []
       });
     }
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error("Gmail API Error:", error);
     return NextResponse.json(
-      { error: "Internal Server Error", details: error.message },
+      { error: "Internal Server Error", details: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     );
   }

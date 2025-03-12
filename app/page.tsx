@@ -4,8 +4,15 @@
 import { useState } from 'react';
 import ChatInput from '@/components/ChatInput';
 
+// Define a proper type for the API response
+interface ApiResponse {
+  result?: string;
+  error?: string;
+}
+
 export default function HomePage() {
-  const [response, setResponse] = useState<any>(null);
+  // Replace 'any' with the specific type
+  const [response, setResponse] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState(false);
 
   const handleSend = async (question: string) => {
@@ -17,10 +24,11 @@ export default function HomePage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ input: `${question},` }),
       });
-      const data = await res.json();
-      setResponse(data.result || data.error);
-    } catch (error: any) {
-      setResponse({ error: error.message });
+      // Use the defined type for the data
+      const data = await res.json() as ApiResponse;
+      setResponse(data.result ? { result: data.result } : { error: data.error });
+    } catch (error: unknown) {
+      setResponse({ error: error instanceof Error ? error.message : 'An unknown error occurred' });
     }
     setLoading(false);
   };

@@ -14,11 +14,12 @@ import {
     SidebarMenuSubItem,
     SidebarMenuSubButton,
   } from "@/components/ui/sidebar"
-  import { ArrowUpRight, Newspaper, ChevronDown, Mail, PenSquare, Calendar, Twitter, Facebook, Linkedin, Users, FileText, Share2, Share } from "lucide-react"
+  import { ArrowUpRight, Newspaper, ChevronDown, PenSquare, Twitter, Facebook, Linkedin, FileText, Share2 } from "lucide-react"
   import { SiteSwitcher } from "@/components/navigation/SiteSwitcher"
   import { signOut, useSession } from "next-auth/react"
   import { useState } from "react"
 import { Video } from "lucide-react"
+import Image from 'next/image'
 
   const menuItems = [
    {
@@ -155,10 +156,12 @@ import { Video } from "lucide-react"
             <a href="#" className="hover:underline flex items-center space-x-2">  Give feedback <ArrowUpRight className="ml-1" />
             </a>
            <div className="mt-4 text-xs text-gray-500">
-             <img 
+             <Image 
                src={session?.user.image ?? "https://i.pravatar.cc/300"} 
                alt="User Avatar" 
-               className="w-16 h-16 rounded-full cursor-pointer" 
+               width={64}
+               height={64}
+               className="rounded-full cursor-pointer" 
                onClick={toggleDropdown}
              />
            </div>

@@ -48,12 +48,11 @@ export async function POST(request: Request) {
     const inputEmbeddings = await embeddings.embedQuery(input);
 
     // Use RedisMemory with embeddings support
-    let memory = new RedisMemory({
-      redis,
+    const memory = new RedisMemory({
       sessionId,
-      returnMessages: true,
-      memoryKey: "history",
-      embeddingKey: "embeddings"
+      redis,
+      memoryKey: "summarizer_chat_history",
+      embeddingKey: "summarizer_embeddings"
     });
 
     // Register available tools.
@@ -117,10 +116,10 @@ export async function POST(request: Request) {
       result: output,
       embeddings: inputEmbeddings // Optionally return embeddings in the response
     });
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error("API Error:", error);
     return NextResponse.json(
-      { error: "Internal Server Error", details: error.message },
+      { error: "Internal Server Error", details: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     );
   }

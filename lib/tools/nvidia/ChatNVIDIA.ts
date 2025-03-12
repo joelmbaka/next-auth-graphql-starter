@@ -12,6 +12,31 @@ export interface ChatNvidiaLLMInput extends BaseLLMParams {
   max_tokens?: number;
 }
 
+interface NvidiaMessage {
+  role: string;
+  content: string;
+}
+
+interface NvidiaCompletionChoice {
+  message: NvidiaMessage;
+  content?: string;
+  finish_reason: string;
+  index: number;
+}
+
+interface NvidiaCompletionResponse {
+  id: string;
+  choices: NvidiaCompletionChoice[];
+  created: number;
+  model: string;
+  object: string;
+}
+
+interface NvidiaError {
+  status: number;
+  message: string;
+}
+
 export class ChatNvidiaLLM extends LLM {
   apiKey: string;
   model: string;
@@ -67,7 +92,7 @@ export class ChatNvidiaLLM extends LLM {
     let retries = 3;
     while (retries > 0) {
       try {
-        const completion = await this.openai.chat.completions.create({
+        const completion: NvidiaCompletionResponse = await this.openai.chat.completions.create({
           model: this.model,
           messages: messages.map((m) => ({ role: 'user', content: m })),
           temperature: this.temperature,
@@ -82,16 +107,18 @@ export class ChatNvidiaLLM extends LLM {
           });
         }
         return finalResponse;
-      } catch (error: any) {
-        if (error.status === 429) { // Rate limit error
-          retries--;
-          await new Promise((resolve) => setTimeout(resolve, 1000 * (4 - retries))); // Exponential backoff
-        } else {
-          if (runManager) {
-            await runManager.handleLLMError(error, messages.join("\n"));
+      } catch (error: unknown) {
+        if (typeof error === 'object' && error !== null && 'status' in error) {
+          const nvidiaError = error as NvidiaError;
+          if (nvidiaError.status === 429) {
+            retries--;
+            await new Promise((resolve) => setTimeout(resolve, 1000 * (4 - retries))); // Exponential backoff
           }
-          throw error;
         }
+        if (runManager) {
+          await runManager.handleLLMError(error, messages.join("\n"));
+        }
+        throw error;
       }
     }
     throw new Error('Rate limit exceeded after retries');

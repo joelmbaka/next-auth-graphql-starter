@@ -97,58 +97,59 @@ export async function POST(request: Request) {
           : now;
         
         // Parse time (e.g., "3:00 PM")
-        let [hourStr, minuteStr] = (eventDetails.startTime || "").split(":");
-        let hour = parseInt(hourStr || "0");
-        let isPM = false;
-        
-        if (minuteStr && minuteStr.toLowerCase().includes("pm")) {
-          isPM = true;
-          minuteStr = minuteStr.toLowerCase().replace("pm", "").trim();
-        } else if (minuteStr && minuteStr.toLowerCase().includes("am")) {
-          minuteStr = minuteStr.toLowerCase().replace("am", "").trim();
-        }
-        
-        let minute = parseInt(minuteStr || "0");
-        
-        // Adjust for PM
-        if (isPM && hour < 12) hour += 12;
-        
-        // Set event times
-        const startDate = new Date(eventDate);
-        startDate.setHours(hour, minute, 0, 0);
-        
-        const duration = parseInt(eventDetails.duration || "30");
-        const endDate = new Date(startDate);
-        endDate.setMinutes(endDate.getMinutes() + duration);
-        
-        // Create event in Google Calendar
-        const eventData = {
-          summary: eventDetails.summary || "New Event",
-          start: { dateTime: startDate.toISOString() },
-          end: { dateTime: endDate.toISOString() }
-        };
-        
-        console.log("Creating calendar event:", eventData);
-        const result = await createTool.call(JSON.stringify(eventData));
-        
-        // Generate user-friendly response with LLM
-        const finalResponse = await model.call(
-          `You are a helpful calendar assistant. The user requested to create an event with these details:
-          - Title: ${eventDetails.summary}
-          - Time: ${eventDetails.startTime} on ${eventDetails.date || "today"}
-          - Duration: ${duration} minutes
+        const timeMatch = eventDetails.startTime.match(/(\d+):(\d+)(?: (AM|PM))?/i);
+        if (timeMatch) {
+          const hour = parseInt(timeMatch[1]);
+          const minuteStr = timeMatch[2];
+          const isPM = timeMatch[3]?.toLowerCase() === "pm";
           
-          The event was successfully created. Please provide a friendly confirmation message.`
-        );
-        
-        return NextResponse.json({
-          result: finalResponse,
-          steps: [{
-            tool: "google_calendar_create",
-            input: JSON.stringify(eventData),
-            output: result
-          }]
-        });
+          // Adjust for PM
+          let adjustedHour = hour;
+          if (isPM && adjustedHour < 12) adjustedHour += 12;
+          
+          // Set event times
+          const startDate = new Date(eventDate);
+          startDate.setHours(adjustedHour, parseInt(minuteStr), 0, 0);
+          
+          const duration = parseInt(eventDetails.duration || "30");
+          const endDate = new Date(startDate);
+          endDate.setMinutes(endDate.getMinutes() + duration);
+          
+          // Create event in Google Calendar
+          const eventData = {
+            summary: eventDetails.summary || "New Event",
+            start: { dateTime: startDate.toISOString() },
+            end: { dateTime: endDate.toISOString() }
+          };
+          
+          console.log("Creating calendar event:", eventData);
+          const result = await createTool.call(JSON.stringify(eventData));
+          
+          // Generate user-friendly response with LLM
+          const finalResponse = await model.call(
+            `You are a helpful calendar assistant. The user requested to create an event with these details:
+            - Title: ${eventDetails.summary}
+            - Time: ${eventDetails.startTime} on ${eventDetails.date || "today"}
+            - Duration: ${duration} minutes
+            
+            The event was successfully created. Please provide a friendly confirmation message.`
+          );
+          
+          return NextResponse.json({
+            result: finalResponse,
+            steps: [{
+              tool: "google_calendar_create",
+              input: JSON.stringify(eventData),
+              output: result
+            }]
+          });
+        } else {
+          console.error("Invalid time format");
+          return NextResponse.json({
+            result: "I had trouble creating your calendar event. Please try again with more specific details.",
+            error: "Invalid time format"
+          });
+        }
       } catch (error) {
         console.error("Error creating event:", error);
         return NextResponse.json({
@@ -219,10 +220,10 @@ export async function POST(request: Request) {
         steps: []
       });
     }
-  } catch (error: any) {
+  } catch (error: Error | unknown) {
     console.error("Google Calendar API Error:", error);
     return NextResponse.json(
-      { error: "Internal Server Error", details: error.message },
+      { error: "Internal Server Error", details: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     );
   }
