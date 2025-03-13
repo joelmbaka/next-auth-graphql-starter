@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { auth } from '@/auth';
 import { ChatNvidiaLLM } from "@/lib/tools/nvidia/ChatNVIDIA";
 import {
   GmailGetMessage,
@@ -53,12 +52,6 @@ async function createDraft(accessToken: string, emailData: EmailParams) {
 
 export async function POST(request: Request) {
   try {
-    // Authentication check
-    const session = await auth(request) as Session | null;
-    if (!session || !session.user || !session.accessToken) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
     // Get input from request
     const { input } = await request.json();
     if (!input) {
@@ -67,8 +60,6 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
-
-    console.log("Processing Gmail request:", input);
     
     // Initialize NVIDIA LLM for understanding natural language
     const model = new ChatNvidiaLLM({
@@ -94,20 +85,15 @@ export async function POST(request: Request) {
       User request: "${input}"`
     );
     
-    console.log("Intent detection:", intentResponse);
-    
     // Setup Gmail credentials
     const credentials = {
-      accessToken: session.accessToken,
+      accessToken: request.headers.get('x-access-token') || '',
     };
 
     // Create Gmail tools
     const searchTool = new GmailSearch({ credentials });
     const getMessageTool = new GmailGetMessage({ credentials });
-    // Remove or comment out unused tools
-    // const createDraftTool = new GmailCreateDraft({ credentials });
     const getThreadTool = new GmailGetThread({ credentials });
-    // const sendMessageTool = new GmailSendMessage({ credentials });
     
     // Process based on intent
     if (intentResponse.includes("1:SEARCH") || intentResponse.toLowerCase().includes("search")) {
@@ -128,7 +114,6 @@ export async function POST(request: Request) {
           searchParamsResponse.replace(/```json|```/g, '').trim()
         );
         
-        console.log("Searching emails with params:", searchParams);
         const result = await searchTool.call(searchParams);
         
         // Format the results nicely
@@ -151,7 +136,6 @@ export async function POST(request: Request) {
           }]
         });
       } catch (error) {
-        console.error("Error searching emails:", error);
         return NextResponse.json({
           result: "I had trouble searching your emails. Please try again with a simpler search query.",
           error: String(error)
@@ -183,7 +167,6 @@ export async function POST(request: Request) {
         );
         
         if (messageIDInfo.hasMessageId && messageIDInfo.messageId) {
-          console.log("Reading email with ID:", messageIDInfo.messageId);
           const result = await getMessageTool.call({ messageId: messageIDInfo.messageId });
           
           // Format the email content nicely
@@ -206,7 +189,6 @@ export async function POST(request: Request) {
           });
         } else if (messageIDInfo.searchNeeded) {
           // Need to search first
-          console.log("Search needed first with query:", messageIDInfo.searchQuery);
           const searchResult = await searchTool.call({ 
             query: messageIDInfo.searchQuery,
             maxResults: 5
@@ -239,7 +221,6 @@ export async function POST(request: Request) {
           });
         }
       } catch (error) {
-        console.error("Error reading email:", error);
         return NextResponse.json({
           result: "I had trouble accessing the email. Please make sure you've provided a valid message ID or try searching for emails first.",
           error: String(error)
@@ -286,8 +267,7 @@ export async function POST(request: Request) {
           draftParams.message.to = `${draftDetails.to}@gmail.com`;
         }
         
-        console.log("Creating draft email with correct schema:", draftParams);
-        const result = await createDraft(session.accessToken, draftParams.message);
+        const result = await createDraft(credentials.accessToken, draftParams.message);
         
         // Format a nice response
         const formattingResponse = await model.call(
@@ -310,7 +290,6 @@ export async function POST(request: Request) {
           }]
         });
       } catch (error) {
-        console.error("Error creating draft:", error);
         return NextResponse.json({
           result: "I had trouble creating your draft email. Please make sure you've provided valid recipient details and try again.",
           error: String(error)
@@ -370,8 +349,7 @@ export async function POST(request: Request) {
           draftParams.message.to = `${sendDetails.to}@gmail.com`;
         }
         
-        console.log("Creating draft email instead of sending with correct schema:", draftParams);
-        const result = await createDraft(session.accessToken, draftParams.message);
+        const result = await createDraft(credentials.accessToken, draftParams.message);
         
         return NextResponse.json({
           result: confirmationResponse,
@@ -382,7 +360,6 @@ export async function POST(request: Request) {
           }]
         });
       } catch (error) {
-        console.error("Error handling send request:", error);
         return NextResponse.json({
           result: "I had trouble processing your email send request. Please try again with complete details including recipient, subject, and message body.",
           error: String(error)
@@ -414,7 +391,6 @@ export async function POST(request: Request) {
         );
         
         if (threadIDInfo.hasThreadId && threadIDInfo.threadId) {
-          console.log("Viewing thread with ID:", threadIDInfo.threadId);
           const result = await getThreadTool.call({ threadId: threadIDInfo.threadId });
           
           // Format the thread content nicely
@@ -437,7 +413,6 @@ export async function POST(request: Request) {
           });
         } else if (threadIDInfo.searchNeeded) {
           // Need to search first
-          console.log("Search needed first with query:", threadIDInfo.searchQuery);
           const searchResult = await searchTool.call({ 
             query: threadIDInfo.searchQuery,
             maxResults: 5
@@ -470,7 +445,6 @@ export async function POST(request: Request) {
           });
         }
       } catch (error) {
-        console.error("Error viewing thread:", error);
         return NextResponse.json({
           result: "I had trouble accessing the email thread. Please make sure you've provided a valid thread ID or try searching for emails first.",
           error: String(error)
@@ -484,7 +458,6 @@ export async function POST(request: Request) {
       });
     }
   } catch (error: Error | unknown) {
-    console.error("Gmail API Error:", error);
     return NextResponse.json(
       { error: "Internal Server Error", details: error instanceof Error ? error.message : String(error) },
       { status: 500 }

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import ChatInput from '@/components/ChatInput';
+import { signIn } from 'next-auth/react';
 
 export default function EmailPage() {
   const [loading, setLoading] = useState(false);
@@ -19,14 +20,23 @@ export default function EmailPage() {
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify({ input }),
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to process email request');
-      }
-
       const data = await response.json();
+
+      if (!response.ok) {
+        if (data.needsReauth) {
+          // Handle reauth case
+          setMessages(prev => [...prev, { 
+            role: 'assistant', 
+            content: `${data.message}. Click the sign-in button in the navbar to grant Gmail permissions.` 
+          }]);
+          return;
+        }
+        throw new Error(data.error || 'Failed to process email request');
+      }
       
       // Extract the actual output from the response
       const output = data.output || data.result;

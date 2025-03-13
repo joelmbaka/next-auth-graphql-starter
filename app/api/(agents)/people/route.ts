@@ -7,7 +7,7 @@ import { google } from "googleapis";
 export async function POST(request: Request) {
   try {
     // Authentication check
-    const session = await auth(request) as Session | null;
+    const session = await auth() as Session | null;
     if (!session || !session.accessToken) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -21,7 +21,7 @@ export async function POST(request: Request) {
       );
     }
 
-    console.log("Processing People request:", input);
+    console.log("Processing People request");
 
     // Initialize the LLM for natural language understanding
     const model = new ChatNvidiaLLM({
@@ -45,7 +45,7 @@ Example: "1:LIST", "2:SEARCH", or "3:CREATE"
 User request: "${input}"`
     );
 
-    console.log("Intent detection:", intentResponse);
+    console.log("Intent detected");
 
     // Initialize People API client with OAuth2 authentication using the access token from the session
     const oauth2Client = new google.auth.OAuth2();
@@ -84,7 +84,7 @@ Return only the search query as plain text.
 User request: "${input}"`
       );
       const searchQuery = searchQueryResponse.trim();
-      console.log("Searching contacts with query:", searchQuery);
+      console.log("Searching contacts");
 
       // Call People API's searchContacts method
       const response = await peopleApi.people.searchContacts({
@@ -138,7 +138,7 @@ User request: "${input}"`
         contactDetailsResponse.replace(/```json|```/g, "").trim()
       );
 
-      console.log("Creating contact with details:", contactDetails);
+      console.log("Creating new contact");
 
       // Build the new contact object as required by People API
       const newContact = {
@@ -183,7 +183,7 @@ Confirm that the new contact has been created successfully.`
       });
     }
   } catch (error: Error | unknown) {
-    console.error("People API Error:", error);
+    console.error("People API Error");
     return NextResponse.json(
       {
         error: "Internal Server Error",

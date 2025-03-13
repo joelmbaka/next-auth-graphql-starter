@@ -16,8 +16,8 @@ const typeDefs = readFileSync(join(process.cwd(), 'app/api/graphql/schema.graphq
 const apolloServer = new ApolloServer({
   typeDefs,
   resolvers,
-  context: async (_args: { req: NextRequest; res: NextResponse }) => {
-    const session = await auth(_args.req) as Session | null;
+  context: async () => {
+    const session = await auth() as Session | null;
     return { driver, session, user: session?.user };
   },
 } as ApolloServerOptions<BaseContext>);

@@ -10,7 +10,7 @@ import {
 export async function POST(request: Request) {
   try {
     // Authentication check
-    const session = await auth(request) as Session | null;
+    const session = await auth() as Session | null;
     if (!session || !session.user || !session.accessToken) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -24,7 +24,7 @@ export async function POST(request: Request) {
       );
     }
 
-    console.log("Processing calendar request:", input);
+    console.log("Processing calendar request");
     
     // Initialize NVIDIA LLM for understanding natural language
     const model = new ChatNvidiaLLM({
@@ -47,7 +47,7 @@ export async function POST(request: Request) {
       User request: "${input}"`
     );
     
-    console.log("Intent detection:", intentResponse);
+    console.log("Intent detected");
     
     // Setup calendar tools
     const googleCalendarParams = {
@@ -82,7 +82,7 @@ export async function POST(request: Request) {
         User request: "${input}"`
       );
       
-      console.log("Extracted event details:", eventDetailsResponse);
+      console.log("Extracted event details");
       
       try {
         // Parse the LLM response to get event details
@@ -122,7 +122,7 @@ export async function POST(request: Request) {
             end: { dateTime: endDate.toISOString() }
           };
           
-          console.log("Creating calendar event:", eventData);
+          console.log("Creating calendar event");
           const result = await createTool.call(JSON.stringify(eventData));
           
           // Generate user-friendly response with LLM
@@ -151,7 +151,7 @@ export async function POST(request: Request) {
           });
         }
       } catch (error) {
-        console.error("Error creating event:", error);
+        console.error("Error creating event");
         return NextResponse.json({
           result: "I had trouble creating your calendar event. Please try again with more specific details.",
           error: String(error)
@@ -185,7 +185,7 @@ export async function POST(request: Request) {
         if (viewDetails.startTime) viewParams.start += ` ${viewDetails.startTime}`;
         if (viewDetails.endTime) viewParams.end += ` ${viewDetails.endTime}`;
         
-        console.log("Viewing calendar with params:", viewParams);
+        console.log("Viewing calendar");
         const result = await viewTool.call(JSON.stringify(viewParams));
         
         // Format the results nicely
@@ -207,7 +207,7 @@ export async function POST(request: Request) {
           }]
         });
       } catch (error) {
-        console.error("Error viewing calendar:", error);
+        console.error("Error viewing calendar");
         return NextResponse.json({
           result: "I had trouble accessing your calendar. Please try again with a simpler request.",
           error: String(error)
@@ -221,7 +221,7 @@ export async function POST(request: Request) {
       });
     }
   } catch (error: Error | unknown) {
-    console.error("Google Calendar API Error:", error);
+    console.error("Google Calendar API Error");
     return NextResponse.json(
       { error: "Internal Server Error", details: error instanceof Error ? error.message : String(error) },
       { status: 500 }

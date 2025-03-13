@@ -13,11 +13,10 @@ import { ConsoleCallbackHandler } from "langchain/callbacks";
 export async function POST(request: Request) {
   try {
     // Authentication check
-    const session = await auth(request) as Session | null;
+    const session = await auth() as Session | null;
     if (!session || !session.accessToken) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-
 
     const { input } = await request.json();
     if (!input) {

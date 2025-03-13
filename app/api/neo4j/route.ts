@@ -4,9 +4,9 @@ import { auth } from '@/auth';
 import type { Session } from 'next-auth';
 import { Record } from 'neo4j-driver';
 
-export async function GET(req: Request) {
+export async function GET() {
   // Authenticate using the new auth() function in the App Router context
-  const session = await auth(req) as Session | null;
+  const session = await auth() as Session | null;
   console.log('Session status:', session ? 'Authenticated' : 'Not authenticated');
   console.log('Session data:', JSON.stringify(session, null, 2));
   

@@ -8,8 +8,8 @@ declare module "next-auth" {
       id: string;
       role?: string; // Add role field
     } & DefaultSession["user"];
-    accessToken?: string;
-    refreshToken?: string;
+    accessToken: string;
+    refreshToken: string;
   }
 
   interface User extends DefaultUser {
@@ -45,6 +45,10 @@ declare module "next-auth/jwt" {
   interface JWT {
     // Add custom properties to your JWT, for example:
     id: string;
+    accessToken?: string;
+    refreshToken?: string;
+    expiresAt?: number;
+    provider?: string;
     // You can add other fields like role, permissions, etc.
     permissions?: string[]; // Add permissions field
   }

@@ -1,7 +1,4 @@
-import { auth } from "@/auth";
-import { authOptions } from "@/auth";
+import { handlers } from '@/auth';
 
-// Export the NextAuth handler for all auth routes
-const handler = auth(authOptions);
-
-export { handler as GET, handler as POST };
+export const GET = handlers.GET;
+export const POST = handlers.POST;
