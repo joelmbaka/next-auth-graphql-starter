@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/auth";
+import type { Session } from 'next-auth';
+import { auth } from '@/auth';
 import { ChatNvidiaLLM } from "@/lib/tools/nvidia/ChatNVIDIA";
 import { google } from "googleapis";
 
 export async function POST(request: Request) {
   try {
     // Authentication check
-    const session = await getServerSession(authOptions);
+    const session = await auth(request) as Session | null;
     if (!session || !session.accessToken) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }

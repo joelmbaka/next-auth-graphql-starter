@@ -4,19 +4,20 @@ import { ChatNvidiaLLM } from "@/lib/tools/nvidia/ChatNVIDIA";
 import { NextResponse } from "next/server";
 import { AgentExecutor, createStructuredChatAgent } from "langchain/agents";
 import { PromptTemplate } from "@langchain/core/prompts";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/auth"; 
+import type { Session } from 'next-auth';
+import { auth } from '@/auth';
 import redis from '@/lib/clients/redis';
 import { RedisMemory } from "@/lib/memory/RedisMemory";
 import { ConsoleCallbackHandler } from "langchain/callbacks";
 
 export async function POST(request: Request) {
   try {
-    // Retrieve the user's session using NextAuth.
-    const session = await getServerSession(authOptions);
-    if (!session || !session.user || !session.user.id) {
+    // Authentication check
+    const session = await auth(request) as Session | null;
+    if (!session || !session.accessToken) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
 
     const { input } = await request.json();
     if (!input) {

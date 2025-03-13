@@ -31,5 +31,22 @@ export function formatDate(date: string): string {
   return new Date(date).toLocaleDateString();
 }
 
+import { NextRequest } from 'next/server';
+
+/**
+ * Extracts the subdomain from the request when using lvh.me.
+ * For example, "mybusiness.lvh.me:3000" returns "mybusiness".
+ */
+export function getSubdomain(req: NextRequest): string | null {
+  const host = req.headers.get('host') || '';
+  const hostname = host.split(':')[0]; // Remove port if present
+  const parts = hostname.split('.');
+  // Expecting ["subdomain", "lvh", "me"]
+  if (parts.length === 3 && parts[1] === 'lvh' && parts[2] === 'me') {
+    return parts[0];
+  }
+  return null;
+}
+
 
 

@@ -1,13 +1,21 @@
-import NextAuth from "next-auth";
 import driver from "@/lib/clients/driver";
 import { Neo4jAdapter } from "@auth/neo4j-adapter";
 import GitHubProvider from "next-auth/providers/github";
 import GoogleProvider from "next-auth/providers/google";
-import { NextAuthOptions } from "next-auth";
+import NextAuth from "next-auth";
 
 const neo4jSession = driver.session();
 
-export const authOptions: NextAuthOptions = {
+interface NextAuthCallable {
+  (options: any): {
+    auth: any;
+    handlers: any;
+    signIn: any;
+    signOut: any;
+  };
+}
+
+export const authOptions = {
   providers: [
     GitHubProvider({
       clientId: process.env.GITHUB_ID!,
@@ -65,4 +73,6 @@ export const authOptions: NextAuthOptions = {
     },
   },
 };
+
+export const { auth, handlers, signIn, signOut } = (NextAuth as unknown as NextAuthCallable)(authOptions);
  

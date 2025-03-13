@@ -49,3 +49,13 @@ declare module "next-auth/jwt" {
     permissions?: string[]; // Add permissions field
   }
 }
+
+// Declare the callable NextAuth function for v5
+declare function NextAuth(options: any): {
+  auth: any;
+  handlers: any;
+  signIn: any;
+  signOut: any;
+};
+
+export default NextAuth;

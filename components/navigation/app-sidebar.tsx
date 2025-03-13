@@ -14,11 +14,10 @@ import {
     SidebarMenuSubItem,
     SidebarMenuSubButton,
   } from "@/components/ui/sidebar"
-  import { ArrowUpRight, Newspaper, ChevronDown, PenSquare, Twitter, Facebook, Linkedin, FileText, Share2, Users } from "lucide-react"
+  import { ArrowUpRight, Newspaper, ChevronDown, PenSquare, FileText, Share2, Users } from "lucide-react"
   import { SiteSwitcher } from "@/components/navigation/SiteSwitcher"
   import { signOut, useSession } from "next-auth/react"
   import { useState } from "react"
-import { Video } from "lucide-react"
 import Image from 'next/image'
 
   const menuItems = [
@@ -45,9 +44,7 @@ import Image from 'next/image'
      title: "Gmail",
      icon: Share2,
      subItems: [
-       {title: "X.com", url: "/gmail/x", icon: Twitter},
-       {title: "Facebook.com", url: "/gmail/facebook", icon: Facebook},
-       {title: "LinkedIn.com", url: "/gmail/linkedin", icon: Linkedin}
+       
      ]
    },
    {
@@ -157,7 +154,7 @@ import Image from 'next/image'
             </a>
            <div className="mt-4 text-xs text-gray-500">
              <Image 
-               src={session?.user.image ?? "https://i.pravatar.cc/300"} 
+               src={session?.user?.image ?? "https://i.pravatar.cc/300"} 
                alt="User Avatar" 
                width={64}
                height={64}
